@@ -40,9 +40,17 @@ final class ResultView: NSView {
         textView.isEditable = false
         textView.isSelectable = true
         textView.font = .systemFont(ofSize: 18)
-        textView.string = body
+        textView.string = body.isEmpty ? "No translation text was returned." : body
         textView.textContainerInset = NSSize(width: 12, height: 12)
         textView.baseWritingDirection = .rightToLeft
+        textView.frame = NSRect(x: 0, y: 0, width: 488, height: 284)
+        textView.minSize = NSSize(width: 0, height: 284)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(width: 488, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
         scrollView.documentView = textView
 
         addSubview(titleLabel)
