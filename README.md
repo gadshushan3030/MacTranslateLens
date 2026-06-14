@@ -63,6 +63,16 @@ chmod +x scripts/build-app.sh
 open .build/MacTranslateLens.app
 ```
 
+To build an installable `.dmg`:
+
+```sh
+chmod +x scripts/package-dmg.sh
+./scripts/package-dmg.sh
+open dist/MacTranslateLens.dmg
+```
+
+Then drag `MacTranslateLens.app` into `Applications`.
+
 ## First-run permissions
 
 For screen-region translation, grant Screen Recording permission:
