@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -9,7 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let capture = ScreenCaptureService()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        ProcessInfo.processInfo.disableAutomaticTermination("MacTranslateLens runs from the menu bar.")
         configureMenuBar()
+        requestScreenRecordingPermissionIfNeeded()
     }
 
     private func configureMenuBar() {
@@ -19,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Translate Screen Region", action: #selector(translateScreenRegion), keyEquivalent: "t"))
         menu.addItem(NSMenuItem(title: "Translate Clipboard", action: #selector(translateClipboard), keyEquivalent: "c"))
+        menu.addItem(NSMenuItem(title: "Request Screen Recording Permission", action: #selector(requestScreenRecordingPermission), keyEquivalent: "p"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
 
@@ -30,7 +34,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
     }
 
+    private func requestScreenRecordingPermissionIfNeeded() {
+        guard !CGPreflightScreenCaptureAccess() else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            _ = CGRequestScreenCaptureAccess()
+        }
+    }
+
+    @objc private func requestScreenRecordingPermission() {
+        if CGPreflightScreenCaptureAccess() {
+            ResultWindow.show(title: "Screen Recording", body: "Screen Recording permission is already enabled.")
+        } else {
+            _ = CGRequestScreenCaptureAccess()
+        }
+    }
+
     @objc private func translateScreenRegion() {
+        guard CGPreflightScreenCaptureAccess() else {
+            _ = CGRequestScreenCaptureAccess()
+            ResultWindow.show(
+                title: "Screen Recording Required",
+                body: "Enable Screen Recording for MacTranslateLens in System Settings, then quit and reopen the app."
+            )
+            return
+        }
+
         guard let screen = NSScreen.main else {
             ResultWindow.show(title: "MacTranslateLens", body: "No active screen found.")
             return
