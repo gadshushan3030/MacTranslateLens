@@ -39,4 +39,10 @@ cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
+# Ad-hoc sign so macOS gives the bundle a stable identity and does not flag it
+# as damaged. Note: an ad-hoc signature changes on every rebuild, so macOS will
+# re-ask for Screen Recording permission after each rebuild (clipboard
+# translation needs no permission and is unaffected).
+codesign --force --deep --sign - "$APP_DIR"
+
 echo "$APP_DIR"

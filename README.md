@@ -7,11 +7,30 @@ MacTranslateLens is a small menu-bar app that lets you select a region on screen
 ## Current MVP
 
 - Menu-bar app
-- Translate selected screen region
-- Translate clipboard text
+- **Global shortcut to translate clipboard text** (default `⌃⌥⌘T`) — needs no permission
+- Translate selected screen region (optional; requires Screen Recording)
 - Local OCR through Apple's Vision framework
 - Local model call through an Ollama-compatible `/api/generate` endpoint
 - No cloud API keys
+
+## Everyday use: the global shortcut
+
+The fastest workflow needs no permissions at all:
+
+1. Select text anywhere and copy it (`⌘C`).
+2. Press the global shortcut **`⌃⌥⌘T`**.
+3. The Hebrew translation pops up in a floating window.
+
+To change the shortcut, set the `hotkey` default (or the
+`MAC_TRANSLATE_LENS_HOTKEY` env var) to a combo like `cmd+shift+t`:
+
+```sh
+defaults write com.gadshushan.MacTranslateLens hotkey "cmd+shift+t"
+```
+
+Accepted tokens: `cmd`/`shift`/`opt`/`ctrl` plus one key (`a`–`z`, `0`–`9`, or
+`space`). The shortcut is registered with the Carbon Hot Key API, so it works
+system-wide without Accessibility or Input Monitoring permission.
 
 ## Requirements
 
@@ -20,14 +39,23 @@ MacTranslateLens is a small menu-bar app that lets you select a region on screen
 - A local model server, for example Ollama or LM Studio
 - Screen Recording permission for region capture
 
-## Run a local Gemma model
+## Run the local translation model
 
-Install Ollama, then pull a Gemma model that exists in your local setup. Example:
+The default and recommended model is **`gemma4:e4b`** — Google's Gemma 4
+"Effective 4B". Despite a ~9.6 GB download it only uses **~3.3 GB of RAM** at
+runtime (MatFormer weight offloading), so it stays light on a 16–18 GB Mac while
+producing Hebrew on par with much larger models.
+
+Install Ollama, then pull the model:
 
 ```sh
 ollama pull gemma4:e4b
 ollama serve
 ```
+
+The app sends a tuned system prompt and inference options (low temperature,
+anti-transliteration instructions, OCR-noise cleanup), so quality does not depend
+on a custom Modelfile — any capable multilingual model works.
 
 If your model name is different, launch MacTranslateLens with:
 
@@ -38,9 +66,20 @@ MAC_TRANSLATE_LENS_MODEL="your-model-name" .build/debug/MacTranslateLens
 For the `.app` bundle, configure the model with macOS defaults:
 
 ```sh
-defaults write com.gadshushan.MacTranslateLens model "your-model-name"
+defaults write com.gadshushan.MacTranslateLens model "gemma4:e4b"
 defaults write com.gadshushan.MacTranslateLens endpoint "http://127.0.0.1:11434/api/generate"
 ```
+
+### Alternatives
+
+Set any of these via the `model` default above:
+
+- **`mac-translate-hebrew-12b`** (DictaLM 3.0 Nemotron 12B) — highest Hebrew
+  quality, but ~7.8 GB RAM; can bog down an 18 GB Mac. Pull with:
+  `ollama pull hf.co/dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-GGUF:Q4_K_M`
+  then `ollama cp … mac-translate-hebrew-12b`.
+- **`gemma3:4b`** — lightest (~2.8 GB) and fastest, but lower Hebrew fidelity.
+- **`aya-expanse:8b`** — Cohere multilingual (Hebrew officially supported).
 
 You can also override the endpoint:
 
@@ -75,15 +114,19 @@ Then drag `MacTranslateLens.app` into `Applications`.
 
 ## First-run permissions
 
-For screen-region translation, grant Screen Recording permission:
+The clipboard shortcut (`⌃⌥⌘T`) needs **no permissions**.
+
+Only the optional **Translate Screen Region** feature requires Screen Recording.
+You are asked for it the first time you use that feature — not on launch:
 
 System Settings → Privacy & Security → Screen Recording → MacTranslateLens
 
-After granting permission, quit and reopen the app.
+After granting permission, quit and reopen the app. Note: an unsigned/ad-hoc
+build changes identity on each rebuild, so macOS re-asks after every rebuild.
+A stable Developer ID signature avoids this.
 
 ## Roadmap
 
-- Global hotkey
 - Better multi-display capture
 - Translation target language picker
 - Direct selected-text capture through Accessibility
