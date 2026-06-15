@@ -43,6 +43,12 @@ struct TranslationService {
     If the input is only a proper noun, number, code, or untranslatable symbol, return it unchanged.
     """
 
+    /// keep_alive in seconds. 1800 = 30 min: the model stays warm during an
+    /// active session (every translation refreshes the timer) but frees its
+    /// ~7 GB once you stop, so it doesn't pressure RAM while idle.
+    /// (Encoded as a number; a string would need a duration like "30m".)
+    private static let keepAlive = 1800
+
     init() {
         let env = ProcessInfo.processInfo.environment
         let defaults = UserDefaults.standard
@@ -54,7 +60,7 @@ struct TranslationService {
         self.endpoint = URL(string: endpointString) ?? URL(string: "http://127.0.0.1:11434/api/generate")!
         self.model = env["MAC_TRANSLATE_LENS_MODEL"]
             ?? defaults.string(forKey: "model")
-            ?? "gemma4:e4b"
+            ?? "aya-expanse:8b"
 
         // Reasoning is off by default: it can make a short translation take ~40s.
         // Enable with: defaults write com.gadshushan.MacTranslateLens showThinking -bool true
@@ -63,6 +69,27 @@ struct TranslationService {
         } else {
             self.showThinking = defaults.bool(forKey: "showThinking")
         }
+    }
+
+    /// Loads the model into memory ahead of time so the first translation is
+    /// also warm. Ollama loads (and pins) a model when sent an empty prompt.
+    func warmUp() async {
+        struct Preload: Encodable {
+            let model: String
+            let keepAlive: Int
+            enum CodingKeys: String, CodingKey {
+                case model
+                case keepAlive = "keep_alive"
+            }
+        }
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 120
+        request.httpBody = try? JSONEncoder().encode(Preload(model: model, keepAlive: Self.keepAlive))
+
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     func translateToHebrew(_ text: String) async throws -> TranslationResult {
@@ -77,7 +104,9 @@ struct TranslationService {
             prompt: text,
             stream: false,
             think: showThinking,
-            keepAlive: "5m",
+            // Keep the model resident so every translation is warm (~1.5s)
+            // instead of paying a ~25s reload. gemma4:e4b is only ~3.3 GB.
+            keepAlive: Self.keepAlive,
             options: OllamaOptions(
                 temperature: 0.1,
                 topP: 0.9,
@@ -164,7 +193,7 @@ private struct OllamaGenerateRequest: Encodable {
     let prompt: String
     let stream: Bool
     let think: Bool
-    let keepAlive: String
+    let keepAlive: Int
     let options: OllamaOptions
 
     enum CodingKeys: String, CodingKey {

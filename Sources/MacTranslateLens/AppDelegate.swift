@@ -20,6 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.disableAutomaticTermination("MacTranslateLens runs from the menu bar.")
         registerGlobalHotKey()
         configureMenuBar()
+        // Preload the model in the background so even the first translation is warm.
+        Task { await translator.warmUp() }
         // Screen Recording is requested lazily, only when the user picks
         // "Translate Screen Region" — the clipboard flow needs no permission.
     }

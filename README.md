@@ -41,20 +41,21 @@ system-wide without Accessibility or Input Monitoring permission.
 
 ## Run the local translation model
 
-The default and recommended model is **`gemma4:e4b`** — Google's Gemma 4
-"Effective 4B". Despite a ~9.6 GB download it only uses **~3.3 GB of RAM** at
-runtime (MatFormer weight offloading), so it stays light on a 16–18 GB Mac while
-producing Hebrew on par with much larger models.
+The default and recommended model is **`aya-expanse:8b`** — Cohere's multilingual
+model (Hebrew officially supported). It gives excellent Hebrew (days, dates and
+numbers stay correct), uses ~5.5 GB of RAM, and translates in ~1.5 s once warm.
 
 Install Ollama, then pull the model:
 
 ```sh
-ollama pull gemma4:e4b
+ollama pull aya-expanse:8b
 ollama serve
 ```
 
-The app sends a tuned system prompt and inference options (low temperature,
-anti-transliteration instructions, OCR-noise cleanup), so quality does not depend
+The app keeps the model warm and **preloads it on launch** (`keep_alive` 30 min),
+so translations stay near-instant during a session while the model frees its RAM
+when idle. It also sends a tuned system prompt and inference options (low
+temperature, anti-transliteration, OCR-noise cleanup), so quality does not depend
 on a custom Modelfile — any capable multilingual model works.
 
 If your model name is different, launch MacTranslateLens with:
@@ -66,20 +67,23 @@ MAC_TRANSLATE_LENS_MODEL="your-model-name" .build/debug/MacTranslateLens
 For the `.app` bundle, configure the model with macOS defaults:
 
 ```sh
-defaults write com.gadshushan.MacTranslateLens model "gemma4:e4b"
+defaults write com.gadshushan.MacTranslateLens model "aya-expanse:8b"
 defaults write com.gadshushan.MacTranslateLens endpoint "http://127.0.0.1:11434/api/generate"
 ```
 
 ### Alternatives
 
-Set any of these via the `model` default above:
+Set any of these via the `model` default above. Note: on 18 GB you trade quality
+against memory — pick by what you run alongside it.
 
-- **`mac-translate-hebrew-12b`** (DictaLM 3.0 Nemotron 12B) — highest Hebrew
-  quality, but ~7.8 GB RAM; can bog down an 18 GB Mac. Pull with:
+- **`gemma3:4b`** — lightest (~3.6 GB) and fastest (~1.6 s); safe to pin
+  permanently, but occasionally mistranslates days of the week.
+- **`mac-translate-hebrew-12b`** (DictaLM 3.0 Nemotron 12B) — top Hebrew quality,
+  but ~7.8 GB RAM bogs down an 18 GB Mac. Pull with:
   `ollama pull hf.co/dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-GGUF:Q4_K_M`
   then `ollama cp … mac-translate-hebrew-12b`.
-- **`gemma3:4b`** — lightest (~2.8 GB) and fastest, but lower Hebrew fidelity.
-- **`aya-expanse:8b`** — Cohere multilingual (Hebrew officially supported).
+- **`gemma4:e4b`** — Google Gemma 4; excellent quality but ~7.5 GB RAM at runtime
+  (the "Effective 4B" name is misleading) and a slow ~25 s cold load.
 
 You can also override the endpoint:
 
